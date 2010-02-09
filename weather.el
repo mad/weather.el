@@ -42,8 +42,12 @@
 (defvar weather-timer nil)
 
 (defun weather ()
-  "Retrieve weather for your city `weather-city' the current day"
   (interactive)
+  (message (weather-get)))
+
+(defun weather-retrieve ()
+  "Retrieve weather for your city `weather-city' the current day"
+  (ad-activate 'url-http-user-agent-string)
   (let ((weather-url (concat "http://www.google.com/ig/api?weather="
                              (url-hexify-string weather-city)))
         (url-request-method "GET")
@@ -51,32 +55,32 @@
         (url-mime-accept-string "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         (url-request-extra-headers '(("Accept-Language" . "ru,en;q=0.7,en-US;q=0.3")
                                      ("Accept-Charset" . "ISO-8859-1,utf-8;q=0.7,*;q=0.7"))))
-    (save-excursion
-      (switch-to-buffer (url-retrieve-synchronously weather-url))
-      (goto-char (point-min))
-      (delete-region (point-min) (re-search-forward "\n\n" nil t))
-      (let* ((result-buffer (current-buffer))
-             (xml-wather (xml-parse-region (point-min) (point-max)))
-             (current-conditions
+    (switch-to-buffer (url-retrieve-synchronously weather-url))
+    (goto-char (point-min))
+    (delete-region (point-min) (re-search-forward "\n\n" nil t))
+    (let* ((result-buffer (current-buffer))
+           (xml-wather (xml-parse-region (point-min) (point-max)))
+           (current-conditions
+            (xml-node-name
+             (xml-get-children
               (xml-node-name
-               (xml-get-children
-                (xml-node-name
-                 (xml-get-children (xml-node-name xml-wather) 'weather))
-                'current_conditions))))
-        (prog1
-            (concat
-             "["
-             (weather-get-attribute-and-decode current-conditions 'temp_c)
-             ", "
-             (weather-get-attribute-and-decode current-conditions 'condition)
-             ", "
-             (weather-get-attribute-and-decode current-conditions 'wind_condition)
-             "]")
-          (kill-buffer result-buffer))))))
+               (xml-get-children (xml-node-name xml-wather) 'weather))
+              'current_conditions))))
+      (prog1
+          (concat
+           "["
+           (weather-get-attribute-and-decode current-conditions 'temp_c)
+           ", "
+           (weather-get-attribute-and-decode current-conditions 'condition)
+           ", "
+           (weather-get-attribute-and-decode current-conditions 'wind_condition)
+           "]")
+        (kill-buffer result-buffer)
+        (ad-deactivate 'url-http-user-agent-string)))))
 
 (defun weather-titlebar ()
   "Update the titlebar with weather"
-  (setq weather-last (weather)))
+  (setq weather-last (weather-retrieve)))
 
 (defun weather-titlebar-update (&optional last)
   (if (string-match "Ветер" (mapconcat '(lambda (x)
@@ -93,7 +97,6 @@
   (interactive)
   (if (not weather-timer)
       (progn
-        (ad-activate 'url-http-user-agent-string)
         (ad-activate 'emms-mode-line-alter-titlebar)
         (setq weather-timer (run-at-time "0 sec" weather-timer-interval #'weather-titlebar-update))
         (message "weather: auto update enable"))
@@ -102,7 +105,6 @@
       (setq weather-timer nil)
       (setq frame-title-format weather-initial-titlebar)
       (ad-deactivate 'emms-mode-line-alter-titlebar)
-      (ad-deactivate 'url-http-user-agent-string)
       (message "weather: auto update disable"))))
 
 (defun weather-get-attribute-and-decode (xml-data attribute)
