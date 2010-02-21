@@ -43,7 +43,7 @@
 
 (defun weather ()
   (interactive)
-  (message (weather-get)))
+  (message (weather-retrieve)))
 
 (defun weather-retrieve ()
   "Retrieve weather for your city `weather-city' the current day"
