@@ -41,14 +41,18 @@
 
 (defvar weather-timer nil)
 
+(defvar weather-google-api-url "http://www.google.com/ig/api?weather=")
+
 (defun weather ()
   (interactive)
   (message (weather-retrieve)))
 
 (defun weather-retrieve ()
   "Retrieve weather for your city `weather-city' the current day"
+  ;; XXX: we need this hack with advice, because google does not
+  ;; know about emacs user-agent support UTF-8
   (ad-activate 'url-http-user-agent-string)
-  (let ((weather-url (concat "http://www.google.com/ig/api?weather="
+  (let ((weather-url (concat weather-google-api-url
                              (url-hexify-string weather-city)))
         (url-request-method "GET")
         (url-mime-charset-string nil)
@@ -121,9 +125,9 @@
 ;; Google not know what emacs supports utf-8 (even if Accept-Charset:
 ;; utf-8)
 (defadvice url-http-user-agent-string (after url-http-user-agent-string-advice
-                                              () activate)
+                                              ())
   ""
-  (setq ad-return-value "User-Agent: Mozilla/5.0 (X11; U; Linux i686; ru-RU; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7\n"))
+  (setq ad-return-value "User-Agent: Mozilla/5.0 (X11; U; Linux i686; ru-RU; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7\r\n"))
 
 (provide 'weather)
 ;;; weather.el ends here
